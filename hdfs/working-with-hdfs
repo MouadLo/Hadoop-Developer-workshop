@@ -67,9 +67,9 @@ hadoop fs -chmod 777 hadoop-test2/test_with_rep2.csv
 
 ### FILE SYSTEM CHECK - REQUIRES ADMIN PREVILEGES ###
 
-sudo -u hdfs hdfs fsck /user/hirwuser150430/hadoop-test2 -files -blocks -locations 
+sudo -u hdfs hdfs fsck /user/ubuntu/hadoop-test2 -files -blocks -locations 
 
-sudo -u hdfs hdfs fsck /user/hirwuser150430/hadoop-test3 -files -blocks -locations 
+sudo -u hdfs hdfs fsck /user/ubuntu/hadoop-test3 -files -blocks -locations 
 
 sudo -u hdfs hdfs fsck /user/ubuntu/input/yelp/yelp_academic_dataset_review.json -files -blocks -locations 
 

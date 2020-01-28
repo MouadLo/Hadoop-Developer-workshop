@@ -2,15 +2,22 @@
 
 Create Instances
 --Public DNS for the newly created instances
-
-ec2-52-3-178-66.compute-1.amazonaws.com
-ec2-52-3-8-114.compute-1.amazonaws.com
-ec2-52-2-237-123.compute-1.amazonaws.com
+# Master
+ec2-52-207-242-137.compute-1.amazonaws.com
+# Slave 1
+ec2-3-93-180-129.compute-1.amazonaws.com
+# Slave 2
+ec2-3-91-84-134.compute-1.amazonaws.com
 
 --Internal DNS for the newly created instances
-ip-172-31-20-160.ec2.internal
-ip-172-31-20-161.ec2.internal
-ip-172-31-20-162.ec2.internal
+# Master
+ip-172-31-16-11.ec2.internal
+# Slave 1
+ip-172-31-31-151.ec2.internal
+# Slave 2
+ip-172-31-28-44.ec2.internal
+
+
 
 --To login to instances using Windows
 Use PuttyGen to generate .ppk file (private key) from .pem file
@@ -20,37 +27,41 @@ https://www.youtube.com/watch?v=dshyg5cLEPE
 
 --Setup id_rsa on all nodes
 
-cd .ssh
-vi id_rsa
-sudo chown ubuntu:ubuntu id_rsa
-chmod 600 id_rsa
+vi ~/.ssh/id_rsa
+sudo chown ubuntu:ubuntu ~/.ssh/id_rsa
+chmod 400 ~/.ssh/id_rsa
 
---Copy the downloaded JDK to both instances with winscp or other ssh tools of your choice
 
-scp jdk-8u60-linux-x64.gz ip-172-31-20-161.ec2.internal:/home/ubuntu/
-scp jdk-8u60-linux-x64.gz ip-172-31-20-162.ec2.internal:/home/ubuntu/
+#  Downloaded JDK to your local system and then upload it to the Master node
+scp -i ../hadoop-cluster.pem  jdk-8u241-linux-x64.tar.gz ubuntu@ec2-52-207-242-137.compute-1.amazonaws.com:/home/ubuntu/
 
---Untar JDK
-tar -xvf jdk-8u60-linux-x64.gz
 
---Move jdk to /usr/lib/jvm
+#  Copy the downloaded JDK to both instances Slave1 Slave2
+scp jdk-8u241-linux-x64.tar.gz  ubuntu@ip-172-31-31-151.ec2.internal:/home/ubuntu/
+scp jdk-8u241-linux-x64.tar.gz  ubuntu@ip-172-31-28-44.ec2.internal:/home/ubuntu/
+
+
+#--Untar JDK On all nodes
+tar -xvf jdk-8u241-linux-x64.tar.gz
+
+--Move jdk to /usr/lib/jvm On all nodes
 sudo mkdir -p /usr/lib/jvm
-sudo mv ./jdk1.8.0_60 /usr/lib/jvm/
+sudo mv ./jdk1.8.0_241 /usr/lib/jvm/
 
---Create alternatives
-sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk1.8.0_60/bin/java" 1
-sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk1.8.0_60/bin/javac" 1
-sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk1.8.0_60/bin/javaws" 1
+--Create alternatives On all nodes
+sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk1.8.0_241/bin/java" 1
+sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk1.8.0_241/bin/javac" 1
+sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk1.8.0_241/bin/javaws" 1
 
---Set permissions
+--Set permissions On all nodes
 sudo chmod a+x /usr/bin/java 
 sudo chmod a+x /usr/bin/javac 
 sudo chmod a+x /usr/bin/javaws
-sudo chown -R root:root /usr/lib/jvm/jdk1.8.0_60
+sudo chown -R root:root /usr/lib/jvm/jdk1.8.0_241
 
 --Set JAVA_HOME (on all nodes) in /etc/environment
 sudo vi /etc/environment
-export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_60
+export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_241
 
 ############
 
@@ -58,14 +69,18 @@ On all nodes
 
 sudo vi /etc/apt/sources.list.d/cloudera.list
 
-deb [arch=amd64] http://archive.cloudera.com/cdh5/ubuntu/trusty/amd64/cdh trusty-cdh5 contrib
-deb-src http://archive.cloudera.com/cdh5/ubuntu/trusty/amd64/cdh trusty-cdh5 contrib
+deb [arch=amd64] https://archive.cloudera.com/cdh5/ubuntu/xenial/amd64/cdh xenial-cdh5 contrib
+deb-src https://archive.cloudera.com/cdh5/ubuntu/xenial/amd64/cdh xenial-cdh5 contrib
+
 
 sudo vi /etc/apt/preferences.d/cloudera.pref
 
 Package: *
 Pin: release o=Cloudera, l=Cloudera
 Pin-Priority: 501
+
+wget https://archive.cloudera.com/cdh5/ubuntu/xenial/amd64/cdh/archive.key
+sudo apt-key add archive.key
 
 On Master
 
@@ -78,7 +93,7 @@ sudo apt-get install hadoop-client
 On Slave 1
 
 sudo apt-get update
-sudo apt-get install hadoop-hdfs-secondarynamenode
+sudo apt-get install hadoop-hdfs-secondarynamenode -y
 sudo apt-get install hadoop-yarn-nodemanager hadoop-hdfs-datanode hadoop-mapreduce
 sudo apt-get install hadoop-client
 
@@ -100,7 +115,7 @@ sudo vi /etc/hadoop/conf.cdh5/core-site.xml
 
 	<property>
 	 <name>fs.defaultFS</name>
-	 <value>hdfs://ip-172-31-20-160.ec2.internal:8020</value>
+	 <value>hdfs://ip-172-31-16-11.ec2.internal:8020</value>
 	</property>
 	<property>
 	  <name>io.compression.codecs</name>
@@ -133,7 +148,7 @@ sudo vi /etc/hadoop/conf.cdh5/hdfs-site.xml
 	</property>	
 	<property>
 	  <name>dfs.namenode.http-address</name>
-	  <value>ip-172-31-20-160.ec2.internal:50070</value>
+	  <value>ip-172-31-16-11.ec2.internal:50070</value>
 	  <description>
 		The address and the base port on which the dfs NameNode Web UI will listen.
 	  </description>
@@ -152,11 +167,11 @@ sudo vi /etc/hadoop/conf.cdh5/mapred-site.xml
 	</property>
 	<property>
 	 <name>mapreduce.jobhistory.address</name>
-	 <value>ip-172-31-20-160.ec2.internal:10020</value>
+	 <value>ip-172-31-16-11.ec2.internal:10020</value>
 	</property>
 	<property>
 	 <name>mapreduce.jobhistory.webapp.address</name>
-	 <value>ip-172-31-20-160.ec2.internal:19888</value>
+	 <value>ip-172-31-16-11.ec2.internal:19888</value>
 	</property>	
 	<property>
 		<name>yarn.app.mapreduce.am.staging-dir</name>
@@ -168,27 +183,27 @@ sudo vi /etc/hadoop/conf.cdh5/yarn-site.xml
 
   <property>
     <name>yarn.resourcemanager.hostname</name>
-    <value>ip-172-31-20-160.ec2.internal</value>
+    <value>ip-172-31-16-11.ec2.internal</value>
   </property>   
   <property>
     <name>yarn.resourcemanager.resource-tracker.address</name>
-    <value>ip-172-31-20-160.ec2.internal:8031</value>
+    <value>ip-172-31-16-11.ec2.internal:8031</value>
   </property>
   <property>
     <name>yarn.resourcemanager.address</name>
-    <value>ip-172-31-20-160.ec2.internal:8032</value>
+    <value>ip-172-31-16-11.ec2.internal:8032</value>
   </property>
   <property>
     <name>yarn.resourcemanager.scheduler.address</name>
-    <value>ip-172-31-20-160.ec2.internal:8030</value>
+    <value>ip-172-31-16-11.ec2.internal:8030</value>
   </property>
   <property>
     <name>yarn.resourcemanager.admin.address</name>
-    <value>ip-172-31-20-160.ec2.internal:8033</value>
+    <value>ip-172-31-16-11.ec2.internal:8033</value>
   </property>
   <property>
     <name>yarn.resourcemanager.webapp.address</name>
-    <value>ec2-52-3-178-66.compute-1.amazonaws.com:8088</value>
+    <value>ec2-52-207-242-137.compute-1.amazonaws.com:8088</value>
   </property>  
   <property>
     <description>Classpath for typical applications.</description>
@@ -227,16 +242,17 @@ sudo vi /etc/hadoop/conf.cdh5/yarn-site.xml
     <value>hdfs://var/log/hadoop-yarn/apps</value>
   </property>	
 
-masters 
+
 sudo vi /etc/hadoop/conf.cdh5/masters
-ip-172-31-20-161.ec2.internal
+ip-172-31-31-151.ec2.internal
+
 
 --Set JAVA_HOME (on all nodes)
 sudo vi /usr/lib/bigtop-utils/bigtop-detect-javahome
 
 --Add export JAVA_HOME before the if statement - for loop
 
-export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_60
+export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_241
 
 --On Slaves
 sudo cp -r /etc/hadoop/conf.empty /etc/hadoop/conf.cdh5
@@ -244,12 +260,13 @@ sudo chmod 777 -R /etc/hadoop
 
 --Copy configuration files to Slaves (Execute from Master)
 
-scp -r /etc/hadoop/conf.cdh5/* ip-172-31-20-161.ec2.internal:/etc/hadoop/conf.cdh5
-scp -r /etc/hadoop/conf.cdh5/* ip-172-31-20-162.ec2.internal:/etc/hadoop/conf.cdh5
+scp -r /etc/hadoop/conf.cdh5/* ip-172-31-31-151.ec2.internal:/etc/hadoop/conf.cdh5
+scp -r /etc/hadoop/conf.cdh5/* ip-172-31-28-44.ec2.internal:/etc/hadoop/conf.cdh5
 
 On Slaves (after copying)
 sudo chmod 755 -R /etc/hadoop
 
+On Slaves and  Master
 sudo update-alternatives --install /etc/hadoop/conf hadoop-conf /etc/hadoop/conf.cdh5 50
 sudo update-alternatives --set hadoop-conf /etc/hadoop/conf.cdh5
 
@@ -273,7 +290,7 @@ Start HDFS
 for x in `cd /etc/init.d ; ls hadoop-hdfs-*` ; do sudo service $x start ; done
 
 
-http://ec2-52-3-178-66.compute-1.amazonaws.com:50070
+http://ec2-52-207-242-137.compute-1.amazonaws.com:50070
 
 ###Create /tmp dir -- on hdfs
 sudo -u hdfs hadoop fs -mkdir /tmp
@@ -321,8 +338,8 @@ sudo service hadoop-mapreduce-historyserver start
 --if already started issue stop first
 
 
-http://ec2-52-3-178-66.compute-1.amazonaws.com:8088
-http://ec2-52-3-178-66.compute-1.amazonaws.com:19888
+http://ec2-52-207-242-137.compute-1.amazonaws.com:8088
+http://ec2-52-207-242-137.compute-1.amazonaws.com:19888
 
 
 Validation
